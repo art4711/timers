@@ -98,7 +98,7 @@ func (t *Timer)accumulate(d time.Duration) {
 }
 
 // Callback for the Foreach function.
-type ForeachFunc func(name []string, total, avg, max, min float64, count int)
+type ForeachFunc func(name []string, total, avg, max, min time.Duration, count int)
 
 // Iterate over all timers that are the children on this timer and
 // call the callback function for each non-zero timer.
@@ -119,6 +119,5 @@ func (t Timer)foreach(name []string, f ForeachFunc) {
 	if t.running {
 		sw = t.sw.Snapshot()
 	}
-	s := sw.Seconds()
-	f(name, s, s / float64(t.count), t.max.Seconds(), t.min.Seconds(), t.count)
+	f(name, sw.Duration(), sw.Duration() / time.Duration(t.count), t.max, t.min, t.count)
 }

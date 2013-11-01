@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func af(t *testing.T, h, e float64, name string) {
-	if h < e || h > e + 0.1 {
+func af(t *testing.T, h time.Duration, e float64, name string) {
+	if h.Seconds() < e || h.Seconds() > e + 0.1 {
 		t.Errorf("bad %v: %v !~= %v", name, h, e)
 	}
 }
@@ -46,7 +46,7 @@ func TestBasic(t *testing.T) {
 	w1()
 	t1.Stop()
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi float64, c int) {
+	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int) {
 		n := nam(na)
 		if n != "first" {
 			t.Errorf("bad name: %v", n)
@@ -72,7 +72,7 @@ func TestNested(t *testing.T) {
 	t2.Stop()
 	t1.Stop()
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi float64, c int) {
+	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int) {
 		n := nam(na)
 		switch n {
 		case "first":
@@ -82,9 +82,9 @@ func TestNested(t *testing.T) {
 		default:
 			t.Errorf("bad name: %v", n)
 		}
-		af(t, a, tot, n + ".a")
-		af(t, mx, tot, n + ".mx")
-		af(t, mi, tot, n + ".mi")
+		af(t, a, tot.Seconds(), n + ".a")
+		af(t, mx, tot.Seconds(), n + ".mx")
+		af(t, mi, tot.Seconds(), n + ".mi")
 		ai(t, c, 1, n + ".c")
 		count++
 	})
@@ -104,7 +104,7 @@ func TestRepeat(t *testing.T) {
 	t1.Stop()
 
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi float64, c int) {
+	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int) {
 		n := nam(na)
 		switch n {
 		case "1":
@@ -138,7 +138,7 @@ func TestNestedHandover(t *testing.T) {
 	t2.Stop()
 	t1.Stop()
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi float64, c int) {
+	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int) {
 		n := nam(na)
 		switch n {
 		case "1":
