@@ -1,0 +1,121 @@
+package timers
+
+import (
+	"github.com/art4711/stopwatch"
+	"time"
+)
+
+// Timer collects structured timing data.
+// Timers are organized in a tree where each sub-Timer is added to the totals
+// of the parent. We currently only measure wall-clock time, partly because
+// that's the only thing that Go provides us, partly because we're interested
+// in I/O time. So collecting timing data for things where you block for a long
+// timers might be useless for what you're doing.
+//
+// How to use this in practice:
+//  allTimers := New()
+//  t = allTimers
+//  t = t.Start("foo")
+//  foo()
+//  t = t.Handover("bar")
+//  bar(t)
+//  t = t.Stop()
+//  func bar(t timers.Timer) {
+//       t = t.Start("a")
+//       a()
+//       t = t.Handover("b")
+//       b()
+//  }
+//
+//  This will create a structue with timers as:
+//  foo
+//  bar
+//  bar.a
+//  bar.b
+type Timer struct {
+	children map[string]*Timer
+	parent *Timer
+	running bool
+
+	count int			// not updated until stopped.
+	sw stopwatch.Stopwatch
+
+	max time.Duration
+	min time.Duration
+}
+
+func New() *Timer {
+	return &Timer{ min: 1 << 63 - 1 }
+}
+
+func (t *Timer)getChild(name string) *Timer {
+	if t.children == nil {
+		t.children = make(map[string]*Timer)
+	}
+	n, exists := t.children[name]
+	if !exists {
+		n = New()
+		t.children[name] = n
+		n.parent = t
+	}
+	return n
+}
+
+func (t *Timer)Start(name string) *Timer {
+	n := t.getChild(name)
+	n.sw.Start()
+	n.running = true
+	return n
+}
+
+func (t *Timer)Handover(name string) *Timer {
+	n := t.parent.getChild(name)
+	t.accumulate(t.sw.Handover(&n.sw))
+	n.running = true
+	return n
+}
+
+func (t *Timer)Stop() {
+	t.accumulate(t.sw.Stop())
+}
+
+func (t *Timer)accumulate(d time.Duration) {
+	t.running = false
+	t.count++
+	if d > t.max {
+		t.max = d
+	}
+	if d < t.min {
+		t.min = d
+	}
+}
+
+// Callback for the Foreach function.
+type ForeachFunc func(name string, total, avg, max, min float64, count int)
+
+func (t Timer)Foreach(f ForeachFunc) {
+	t.foreach("", f)
+}
+
+func (t Timer)foreach(name string, f ForeachFunc) {
+	if t.children != nil {
+		for k, v := range t.children {
+			n := name
+			if n != "" {
+				n += "." + k
+			} else {
+				n = k
+			}
+			v.foreach(n, f)
+		}
+	}
+	if t.count == 0 {
+		return
+	}
+	sw := t.sw
+	if t.running {
+		sw = t.sw.Snapshot()
+	}
+	s := sw.Seconds()
+	f(name, s, s / float64(t.count), t.max.Seconds(), t.min.Seconds(), t.count)
+}
