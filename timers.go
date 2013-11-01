@@ -47,6 +47,7 @@ type Timer struct {
 	min time.Duration
 }
 
+// Allocate a new timer.
 func New() *Timer {
 	return &Timer{ min: 1 << 63 - 1 }
 }
@@ -64,6 +65,7 @@ func (t *Timer)getChild(name string) *Timer {
 	return n
 }
 
+// Create a new timer as a child to this timer and start it.
 func (t *Timer)Start(name string) *Timer {
 	n := t.getChild(name)
 	n.sw.Start()
@@ -71,6 +73,7 @@ func (t *Timer)Start(name string) *Timer {
 	return n
 }
 
+// Create a new timer as a child to the parent of this timer and start it.
 func (t *Timer)Handover(name string) *Timer {
 	n := t.parent.getChild(name)
 	t.accumulate(t.sw.Handover(&n.sw))
@@ -78,6 +81,7 @@ func (t *Timer)Handover(name string) *Timer {
 	return n
 }
 
+// Stop the timer.
 func (t *Timer)Stop() {
 	t.accumulate(t.sw.Stop())
 }
@@ -96,6 +100,8 @@ func (t *Timer)accumulate(d time.Duration) {
 // Callback for the Foreach function.
 type ForeachFunc func(name string, total, avg, max, min float64, count int)
 
+// Iterate over all timers that are the children on this timer and
+// call the callback function for each non-zero timer.
 func (t Timer)Foreach(f ForeachFunc) {
 	t.foreach("", f)
 }
