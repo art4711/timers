@@ -6,6 +6,8 @@ package timers
 import (
 	"github.com/art4711/stopwatch"
 	"time"
+	"sync"
+	"sync/atomic"
 )
 
 // Timer collects structured timing data.
@@ -35,16 +37,25 @@ import (
 //  bar
 //  bar.a
 //  bar.b
+//
+// Timers are only partiall concurrency safe. Timers will be allocated safely, but
+// a timer being stopped while foreach is running can give inconsistent results.
+// This is worth the tradeoff of not doing constant locking.
 type Timer struct {
 	children map[string]*Timer
+	children_mtx sync.Mutex
 	parent *Timer
-	running bool
 
-	count int			// not updated until stopped.
-	sw stopwatch.Stopwatch
+	count int64			// not updated until stopped.
 
+	tot time.Duration
 	max time.Duration
 	min time.Duration
+}
+
+type event struct {
+	timer *Timer
+	sw stopwatch.Stopwatch
 }
 
 // Allocate a new timer.
@@ -54,51 +65,74 @@ func New() *Timer {
 
 func (t *Timer)getChild(name string) *Timer {
 	if t.children == nil {
-		t.children = make(map[string]*Timer)
+		t.children_mtx.Lock()
+		// recheck with lock
+		if t.children == nil {
+			t.children = make(map[string]*Timer)
+		}
+		t.children_mtx.Unlock()
 	}
 	n, exists := t.children[name]
 	if !exists {
 		n = New()
-		t.children[name] = n
 		n.parent = t
+		t.children_mtx.Lock()
+		// recheck with lock
+		nn, ex2 := t.children[name]
+		if !ex2 {
+			t.children[name] = n
+		} else {
+			n = nn
+		}
+		t.children_mtx.Unlock()
 	}
 	return n
 }
 
-// Create a new timer as a child to this timer and start it.
-func (t *Timer)Start(name string) *Timer {
-	n := t.getChild(name)
-	n.sw.Start()
-	n.running = true
-	return n
+// Start measuring an event. 
+func (t *Timer)Start(name string) *event {
+	e := event{ timer: t.getChild(name) }
+	e.sw.Start()
+	return &e
 }
 
-// Create a new timer as a child to the parent of this timer and start it.
-func (t *Timer)Handover(name string) *Timer {
-	n := t.parent.getChild(name)
-	t.accumulate(t.sw.Handover(&n.sw))
-	n.running = true
-	return n
+func (e *event)Start(name string) *event {
+	return e.timer.Start(name)
 }
 
-// Stop the timer.
-func (t *Timer)Stop() {
-	t.accumulate(t.sw.Stop())
+// Create a new event as a child to the parent of this events timer and start it.
+func (e *event)Handover(name string) *event {
+	ne := event{ timer: e.timer.parent.getChild(name) }
+	e.sw.Handover(&ne.sw)
+	e.accumulate()
+	return &ne
 }
 
-func (t *Timer)accumulate(d time.Duration) {
-	t.running = false
-	t.count++
-	if d > t.max {
-		t.max = d
+// Stop the event.
+func (e *event)Stop() {
+	e.sw.Stop()
+	e.accumulate()
+}
+
+func (e *event)accumulate() {
+	t := e.timer
+	d := int64(e.sw.Duration())
+	atomic.AddInt64((*int64)(&t.tot), d)
+	atomic.AddInt64((*int64)(&t.count), 1)
+
+	max := int64(t.max)
+	for d > max && atomic.CompareAndSwapInt64((*int64)(&t.max), max, d) {
+		max = int64(t.max)
 	}
-	if d < t.min {
-		t.min = d
+
+	min := int64(t.min)
+	for d < min && atomic.CompareAndSwapInt64((*int64)(&t.min), min, d) {
+		min = int64(t.min)
 	}
 }
 
 // Callback for the Foreach function.
-type ForeachFunc func(name []string, total, avg, max, min time.Duration, count int)
+type ForeachFunc func(name []string, total, avg, max, min time.Duration, count int64)
 
 // Iterate over all timers that are the children on this timer and
 // call the callback function for each non-zero timer.
@@ -115,9 +149,5 @@ func (t Timer)foreach(name []string, f ForeachFunc) {
 	if t.count == 0 {
 		return
 	}
-	sw := t.sw
-	if t.running {
-		sw = t.sw.Snapshot()
-	}
-	f(name, sw.Duration(), sw.Duration() / time.Duration(t.count), t.max, t.min, t.count)
+	f(name, t.tot, t.tot / time.Duration(t.count), t.max, t.min, t.count)
 }
