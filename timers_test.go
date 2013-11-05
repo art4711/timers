@@ -93,7 +93,7 @@ func TestRepeat(t *testing.T) {
 	t1.Stop()
 
 	t1 = tm.Start("1")
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 	t1.Stop()
 
 	count := 0
@@ -108,9 +108,9 @@ func TestRepeat(t *testing.T) {
 			t.Errorf("bad name: %v", n)
 		}
 		af(t, mi, 1.0, "mi")
-		af(t, mx, 1.0, "mx")
-		af(t, tot, 2.0, "tot")
-		af(t, a, 1.0, "avg")
+		af(t, mx, 2.0, "mx")
+		af(t, tot, 3.0, "tot")
+		af(t, a, 1.5, "avg")
 		count++
 	})
 	if count != 1 {
