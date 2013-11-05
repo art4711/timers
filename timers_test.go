@@ -9,8 +9,16 @@ import (
 	"time"
 )
 
+const q = time.Millisecond * 200
+const qd = 5.0
+
 func af(t *testing.T, h time.Duration, e float64, name string) {
-	if h.Seconds() < e || h.Seconds() > e + 0.1 {
+	e /= qd
+	aff(t, h, e, name)
+}
+
+func aff(t *testing.T, h time.Duration, e float64, name string) {
+	if h.Seconds() < e || h.Seconds() > e + 0.02 {
 		t.Errorf("bad %v: %v !~= %v", name, h, e)
 	}
 }
@@ -36,7 +44,7 @@ func nam(n []string) string {
 func TestBasic(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("first")
-	time.Sleep(time.Second)
+	time.Sleep(q)
 	t1.Stop()
 	count := 0
 	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
@@ -59,9 +67,9 @@ func TestBasic(t *testing.T) {
 func TestNested(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("first")
-	time.Sleep(time.Second)
+	time.Sleep(q)
 	t2 := t1.Start("first")
-	time.Sleep(time.Second)
+	time.Sleep(q)
 	t2.Stop()
 	t1.Stop()
 	count := 0
@@ -75,9 +83,9 @@ func TestNested(t *testing.T) {
 		default:
 			t.Errorf("bad name: %v", n)
 		}
-		af(t, a, tot.Seconds(), n + ".a")
-		af(t, mx, tot.Seconds(), n + ".mx")
-		af(t, mi, tot.Seconds(), n + ".mi")
+		aff(t, a, tot.Seconds(), n + ".a")
+		aff(t, mx, tot.Seconds(), n + ".mx")
+		aff(t, mi, tot.Seconds(), n + ".mi")
 		ai(t, c, 1, n + ".c")
 		count++
 	})
@@ -89,11 +97,11 @@ func TestNested(t *testing.T) {
 func TestRepeat(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("1")
-	time.Sleep(time.Second)
+	time.Sleep(q)
 	t1.Stop()
 
 	t1 = tm.Start("1")
-	time.Sleep(time.Second * 2)
+	time.Sleep(q * 2)
 	t1.Stop()
 
 	count := 0
@@ -121,14 +129,59 @@ func TestRepeat(t *testing.T) {
 func TestNestedHandover(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("1")
-	time.Sleep(time.Second)
+	time.Sleep(q)
 	t2 := t1.Start("1")
-	time.Sleep(time.Second)
+	time.Sleep(q)
 	t2 = t2.Handover("2")
-	time.Sleep(time.Second)
+	time.Sleep(q)
 	t2 = t2.Handover("1")
-	time.Sleep(time.Second * 2)
+	time.Sleep(q * 2)
 	t2.Stop()
+	t1.Stop()
+	count := 0
+	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
+		n := nam(na)
+		switch n {
+		case "1":
+			af(t, tot, 5.0, n + ".tot")
+			af(t, mx, 5.0, n + ".mx")
+			af(t, mi, 5.0, n + ".mi")
+			ai(t, c, 1, n + ".c")
+		case "1.1":
+			af(t, tot, 3.0, n + ".tot")
+			af(t, mx, 2.0, n + ".mx")
+			af(t, mi, 1.0, n + ".mi")
+			ai(t, c, 2, n + ".c")
+		case "1.2":
+			af(t, tot, 1.0, n + ".tot")
+			af(t, mx, 1.0, n + ".mx")
+			af(t, mi, 1.0, n + ".mi")
+			ai(t, c, 1, n + ".c")
+		default:
+			t.Errorf("bad name: %v", n)
+		}
+		count++
+	})
+	if count != 3 {
+		t.Errorf("too many timers %v", count)
+	}
+}
+
+func tfun(t2 *timers.Event) {
+	t2 = t2.Handover("2")
+	time.Sleep(q)
+	t2 = t2.Handover("1")
+	time.Sleep(q * 2)
+	t2.Stop()	
+}
+
+func TestNestedHandoverFunction(t *testing.T) {
+	tm := timers.New()
+	t1 := tm.Start("1")
+	time.Sleep(q)
+	t2 := t1.Start("1")
+	time.Sleep(q)
+	tfun(t2)
 	t1.Stop()
 	count := 0
 	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {

@@ -19,13 +19,12 @@ import (
 //
 // How to use this in practice:
 //  allTimers := New()
-//  t = allTimers
-//  t = t.Start("foo")
+//  e = allTimers.Start("foo")
 //  foo()
-//  t = t.Handover("bar")
+//  e = e.Handover("bar")
 //  bar(t)
-//  t = t.Stop()
-//  func bar(t timers.Timer) {
+//  e.Stop()
+//  func bar(e *timers.Event) {
 //       t = t.Start("a")
 //       a()
 //       t = t.Handover("b")
@@ -38,7 +37,7 @@ import (
 //  bar.a
 //  bar.b
 //
-// Timers are only partiall concurrency safe. Timers will be allocated safely, but
+// Timers are only partially concurrency safe. Timers will be allocated safely, but
 // a timer being stopped while foreach is running can give inconsistent results.
 // This is worth the tradeoff of not doing constant locking.
 type Timer struct {
@@ -53,7 +52,7 @@ type Timer struct {
 	min time.Duration
 }
 
-type event struct {
+type Event struct {
 	timer *Timer
 	sw stopwatch.Stopwatch
 }
@@ -90,31 +89,31 @@ func (t *Timer)getChild(name string) *Timer {
 }
 
 // Start measuring an event. 
-func (t *Timer)Start(name string) *event {
-	e := event{ timer: t.getChild(name) }
+func (t *Timer)Start(name string) *Event {
+	e := Event{ timer: t.getChild(name) }
 	e.sw.Start()
 	return &e
 }
 
-func (e *event)Start(name string) *event {
+func (e *Event)Start(name string) *Event {
 	return e.timer.Start(name)
 }
 
 // Create a new event as a child to the parent of this events timer and start it.
-func (e *event)Handover(name string) *event {
-	ne := event{ timer: e.timer.parent.getChild(name) }
+func (e *Event)Handover(name string) *Event {
+	ne := Event{ timer: e.timer.parent.getChild(name) }
 	e.sw.Handover(&ne.sw)
 	e.accumulate()
 	return &ne
 }
 
 // Stop the event.
-func (e *event)Stop() {
+func (e *Event)Stop() {
 	e.sw.Stop()
 	e.accumulate()
 }
 
-func (e *event)accumulate() {
+func (e *Event)accumulate() {
 	t := e.timer
 	d := int64(e.sw.Duration())
 	atomic.AddInt64((*int64)(&t.tot), d)
