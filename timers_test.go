@@ -127,7 +127,7 @@ func TestNestedHandover(t *testing.T) {
 	t2 = t2.Handover("2")
 	time.Sleep(time.Second)
 	t2 = t2.Handover("1")
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 	t2.Stop()
 	t1.Stop()
 	count := 0
@@ -135,13 +135,13 @@ func TestNestedHandover(t *testing.T) {
 		n := nam(na)
 		switch n {
 		case "1":
-			af(t, tot, 4.0, n + ".tot")
-			af(t, mx, 4.0, n + ".mx")
-			af(t, mi, 4.0, n + ".mi")
+			af(t, tot, 5.0, n + ".tot")
+			af(t, mx, 5.0, n + ".mx")
+			af(t, mi, 5.0, n + ".mi")
 			ai(t, c, 1, n + ".c")
 		case "1.1":
-			af(t, tot, 2.0, n + ".tot")
-			af(t, mx, 1.0, n + ".mx")
+			af(t, tot, 3.0, n + ".tot")
+			af(t, mx, 2.0, n + ".mx")
 			af(t, mi, 1.0, n + ".mi")
 			ai(t, c, 2, n + ".c")
 		case "1.2":
