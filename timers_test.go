@@ -21,13 +21,6 @@ func ai(t *testing.T, h, e int64, name string) {
 	}
 }
 
-func w1() {
-	d, _ := time.ParseDuration("1s")
-	select {
-	case <- time.After(d):
-	}
-}
-
 func nam(n []string) string {
 	var r string
 	for k, v := range n {
@@ -43,7 +36,7 @@ func nam(n []string) string {
 func TestBasic(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("first")
-	w1()
+	time.Sleep(time.Second)
 	t1.Stop()
 	count := 0
 	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
@@ -66,9 +59,9 @@ func TestBasic(t *testing.T) {
 func TestNested(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("first")
-	w1()
+	time.Sleep(time.Second)
 	t2 := t1.Start("first")
-	w1()
+	time.Sleep(time.Second)
 	t2.Stop()
 	t1.Stop()
 	count := 0
@@ -96,11 +89,11 @@ func TestNested(t *testing.T) {
 func TestRepeat(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("1")
-	w1()
+	time.Sleep(time.Second)
 	t1.Stop()
 
 	t1 = tm.Start("1")
-	w1()
+	time.Sleep(time.Second)
 	t1.Stop()
 
 	count := 0
@@ -128,13 +121,13 @@ func TestRepeat(t *testing.T) {
 func TestNestedHandover(t *testing.T) {
 	tm := timers.New()
 	t1 := tm.Start("1")
-	w1()
+	time.Sleep(time.Second)
 	t2 := t1.Start("1")
-	w1()
+	time.Sleep(time.Second)
 	t2 = t2.Handover("2")
-	w1()
+	time.Sleep(time.Second)
 	t2 = t2.Handover("1")
-	w1()
+	time.Sleep(time.Second)
 	t2.Stop()
 	t1.Stop()
 	count := 0
