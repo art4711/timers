@@ -47,16 +47,16 @@ func TestBasic(t *testing.T) {
 	time.Sleep(q)
 	t1.Stop()
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
+	tm.Foreach(func (na []string, cnt *timers.Counts) {
 		n := nam(na)
 		if n != "first" {
 			t.Errorf("bad name: %v", n)
 		}
-		af(t, tot, 1.0, "tot")
-		af(t, a, 1.0, "a")
-		af(t, mx, 1.0, "mx")
-		af(t, mi, 1.0, "mi")
-		ai(t, c, 1, "c")
+		af(t, cnt.Tot, 1.0, "tot")
+		af(t, cnt.Avg, 1.0, "a")
+		af(t, cnt.Max, 1.0, "mx")
+		af(t, cnt.Min, 1.0, "mi")
+		ai(t, cnt.Count, 1, "c")
 		count++
 	})
 	if count != 1 {
@@ -73,8 +73,9 @@ func TestNested(t *testing.T) {
 	t2.Stop()
 	t1.Stop()
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
+	tm.Foreach(func (na []string, cnt *timers.Counts) {
 		n := nam(na)
+		tot := cnt.Tot
 		switch n {
 		case "first":
 			af(t, tot, 2.0, n + ".tot")
@@ -83,10 +84,10 @@ func TestNested(t *testing.T) {
 		default:
 			t.Errorf("bad name: %v", n)
 		}
-		aff(t, a, tot.Seconds(), n + ".a")
-		aff(t, mx, tot.Seconds(), n + ".mx")
-		aff(t, mi, tot.Seconds(), n + ".mi")
-		ai(t, c, 1, n + ".c")
+		aff(t, cnt.Avg, tot.Seconds(), n + ".a")
+		aff(t, cnt.Max, tot.Seconds(), n + ".mx")
+		aff(t, cnt.Min, tot.Seconds(), n + ".mi")
+		ai(t, cnt.Count, 1, n + ".c")
 		count++
 	})
 	if count != 2 {
@@ -105,20 +106,20 @@ func TestRepeat(t *testing.T) {
 	t1.Stop()
 
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
+	tm.Foreach(func (na []string, cnt *timers.Counts) {
 		n := nam(na)
 		switch n {
 		case "1":
-			if c != 2 {
-				t.Errorf("bad count: %v", c)
+			if cnt.Count != 2 {
+				t.Errorf("bad count: %v", cnt.Count)
 			}
 		default:
 			t.Errorf("bad name: %v", n)
 		}
-		af(t, mi, 1.0, "mi")
-		af(t, mx, 2.0, "mx")
-		af(t, tot, 3.0, "tot")
-		af(t, a, 1.5, "avg")
+		af(t, cnt.Min, 1.0, "mi")
+		af(t, cnt.Max, 2.0, "mx")
+		af(t, cnt.Tot, 3.0, "tot")
+		af(t, cnt.Avg, 1.5, "avg")
 		count++
 	})
 	if count != 1 {
@@ -139,24 +140,24 @@ func TestNestedHandover(t *testing.T) {
 	t2.Stop()
 	t1.Stop()
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
+	tm.Foreach(func (na []string, cnt *timers.Counts) {
 		n := nam(na)
 		switch n {
 		case "1":
-			af(t, tot, 5.0, n + ".tot")
-			af(t, mx, 5.0, n + ".mx")
-			af(t, mi, 5.0, n + ".mi")
-			ai(t, c, 1, n + ".c")
+			af(t, cnt.Tot, 5.0, n + ".tot")
+			af(t, cnt.Max, 5.0, n + ".mx")
+			af(t, cnt.Min, 5.0, n + ".mi")
+			ai(t, cnt.Count, 1, n + ".c")
 		case "1.1":
-			af(t, tot, 3.0, n + ".tot")
-			af(t, mx, 2.0, n + ".mx")
-			af(t, mi, 1.0, n + ".mi")
-			ai(t, c, 2, n + ".c")
+			af(t, cnt.Tot, 3.0, n + ".tot")
+			af(t, cnt.Max, 2.0, n + ".mx")
+			af(t, cnt.Min, 1.0, n + ".mi")
+			ai(t, cnt.Count, 2, n + ".c")
 		case "1.2":
-			af(t, tot, 1.0, n + ".tot")
-			af(t, mx, 1.0, n + ".mx")
-			af(t, mi, 1.0, n + ".mi")
-			ai(t, c, 1, n + ".c")
+			af(t, cnt.Tot, 1.0, n + ".tot")
+			af(t, cnt.Max, 1.0, n + ".mx")
+			af(t, cnt.Min, 1.0, n + ".mi")
+			ai(t, cnt.Count, 1, n + ".c")
 		default:
 			t.Errorf("bad name: %v", n)
 		}
@@ -184,24 +185,24 @@ func TestNestedHandoverFunction(t *testing.T) {
 	tfun(t2)
 	t1.Stop()
 	count := 0
-	tm.Foreach(func (na []string, tot, a, mx, mi time.Duration, c int64) {
+	tm.Foreach(func (na []string, cnt *timers.Counts) {
 		n := nam(na)
 		switch n {
 		case "1":
-			af(t, tot, 5.0, n + ".tot")
-			af(t, mx, 5.0, n + ".mx")
-			af(t, mi, 5.0, n + ".mi")
-			ai(t, c, 1, n + ".c")
+			af(t, cnt.Tot, 5.0, n + ".tot")
+			af(t, cnt.Max, 5.0, n + ".mx")
+			af(t, cnt.Min, 5.0, n + ".mi")
+			ai(t, cnt.Count, 1, n + ".c")
 		case "1.1":
-			af(t, tot, 3.0, n + ".tot")
-			af(t, mx, 2.0, n + ".mx")
-			af(t, mi, 1.0, n + ".mi")
-			ai(t, c, 2, n + ".c")
+			af(t, cnt.Tot, 3.0, n + ".tot")
+			af(t, cnt.Max, 2.0, n + ".mx")
+			af(t, cnt.Min, 1.0, n + ".mi")
+			ai(t, cnt.Count, 2, n + ".c")
 		case "1.2":
-			af(t, tot, 1.0, n + ".tot")
-			af(t, mx, 1.0, n + ".mx")
-			af(t, mi, 1.0, n + ".mi")
-			ai(t, c, 1, n + ".c")
+			af(t, cnt.Tot, 1.0, n + ".tot")
+			af(t, cnt.Max, 1.0, n + ".mx")
+			af(t, cnt.Min, 1.0, n + ".mi")
+			ai(t, cnt.Count, 1, n + ".c")
 		default:
 			t.Errorf("bad name: %v", n)
 		}
@@ -215,6 +216,19 @@ func TestNestedHandoverFunction(t *testing.T) {
 func BenchmarkBasic(b *testing.B) {
 	for i:= 0; i < b.N; i++ {
 		tm := timers.New()
+		t1 := tm.Start("1")
+		t2 := t1.Start("1")
+		t2 = t2.Handover("2")
+		t2 = t2.Handover("1")
+		t2.Stop()
+		t1.Handover("2")
+		t1.Stop()
+	}
+}
+
+func BenchmarkMemstats(b *testing.B) {
+	for i:= 0; i < b.N; i++ {
+		tm := timers.NewMemStats()
 		t1 := tm.Start("1")
 		t2 := t1.Start("1")
 		t2 = t2.Handover("2")

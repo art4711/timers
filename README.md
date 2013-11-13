@@ -25,3 +25,9 @@ foo
 bar
 bar.a
 bar.b
+
+You can then use Foreach to collect the data from the timers.
+
+Allocating the timer with NewMemStats() will also record some memory
+usage statistics along with timing data, but keep in mind that this
+makes the timers a magnitude slower.
