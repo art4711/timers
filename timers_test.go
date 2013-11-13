@@ -211,3 +211,16 @@ func TestNestedHandoverFunction(t *testing.T) {
 		t.Errorf("too many timers %v", count)
 	}
 }
+
+func BenchmarkBasic(b *testing.B) {
+	for i:= 0; i < b.N; i++ {
+		tm := timers.New()
+		t1 := tm.Start("1")
+		t2 := t1.Start("1")
+		t2 = t2.Handover("2")
+		t2 = t2.Handover("1")
+		t2.Stop()
+		t1.Handover("2")
+		t1.Stop()
+	}
+}
