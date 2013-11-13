@@ -62,6 +62,7 @@ type Counts struct {
 
 	BytesAlloc uint64
 	NumGC uint32	
+	GCTime time.Duration
 }
 
 
@@ -71,6 +72,7 @@ type Event struct {
 
 	bytesAlloc uint64
 	numGC uint32
+	gcTime uint64
 }
 
 // Allocate a new timer.
@@ -117,6 +119,7 @@ func (e *Event)startMemStats() {
 	runtime.ReadMemStats(&ms)
 	e.bytesAlloc = ms.TotalAlloc
 	e.numGC = ms.NumGC
+	e.gcTime = ms.PauseTotalNs
 }
 
 // Start measuring an event. 
@@ -171,6 +174,7 @@ func (e *Event)accumulate() {
 		runtime.ReadMemStats(&ms)
 		atomic.AddUint64(&t.cnt.BytesAlloc, ms.TotalAlloc - e.bytesAlloc)
 		atomic.AddUint32(&t.cnt.NumGC, ms.NumGC - e.numGC)
+		atomic.AddInt64((*int64)(&t.cnt.GCTime), int64(ms.PauseTotalNs - e.gcTime))
 	}
 }
 
