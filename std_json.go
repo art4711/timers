@@ -56,16 +56,25 @@ d :=`<html>
   </head>
   <body>
     <a href="#" id="reload">reload</a>
-    <div id="timerdata"></div>
     <div id="timercanvas"></div>
+    <div id="timerdata"></div>
 
     <script type="text/javascript">
-	var cols = ['purple', 'red', 'orange', 'yellow', 'lime', 'green', 'blue', 'navy', 'black'];
+	var col_level = [
+		d3.interpolateRgb(d3.rgb(0, 127, 0), d3.rgb(0, 255, 0)),
+		d3.interpolateRgb(d3.rgb(127, 0, 0), d3.rgb(255, 0, 0)),
+		d3.interpolateRgb(d3.rgb(0, 0, 127), d3.rgb(0, 0, 255)),
+		d3.interpolateRgb(d3.rgb(127, 127, 0), d3.rgb(255, 255, 0)),
+		d3.interpolateRgb(d3.rgb(0, 127, 127), d3.rgb(0, 255, 255))
+	]
 
 	var w = 800;
 	var h = 300;
+	var blockheight = 50;
 
 	var svg = d3.select("#timercanvas").append("svg").attr("width", w).attr("height", h);
+
+	var visible = [ "top" ];
 
 	function reload() {
 		function add_timer(timer, addto, idname) {
@@ -86,31 +95,36 @@ d :=`<html>
 				}
 			}
 		}
-		function redraw(timer) {
+		function redraw(parent, timer, yoff, xoff, w, level) {
 			var gdata = [ 1 ];	// Force update.
-			var g = svg.selectAll("g").data(gdata);
+			var g = parent.selectAll("g").data(gdata);
 
 			g.enter().append("g");
 
-			var rects = g.selectAll("rect").data(timer.Children);
+			var cl = col_level[level % col_level.length];
 
-			rects.enter().append("rect");
+			var rects = g.selectAll("g").data(timer.Children);
 
-			var xoff = 0;
-			rects.attr("x", function(d, i) {
-				r = xoff;
+			rects.enter().append("g");
+
+			rects.each(function(d, gi) {
+				var rd = [ d ];
+				var rg = d3.select(this)
+
+				rg.attr("transform", "translate(" + xoff + ", " + yoff + ") scale(" + d.Cnt.Avg + ", 1)");
 				xoff += d.Cnt.Avg;
-				return r;
-			})
-			.attr("y", 0).attr("height", 50)
-			.attr("width", function(d, i) {
-				return d.Cnt.Avg;
-			})
-			.attr("fill", function(d, i) {
-				return cols[i % cols.length];
-			})
-			.on("click", function(d, i) {
-				console.log("clicked: " + d.Name);
+
+				var r = rg.selectAll("rect").data(rd);
+				r.enter().append("rect");
+				r.attr("height", blockheight).attr("width", "1")
+				.attr("fill", function() {
+					return cl(gi / timer.Children.length);
+				}).on("click", function() {
+					console.log("clicked: " + d.Name);
+				});
+				if (d.Children) {
+					redraw(d3.select(this), d, blockheight, 0, 1, level + 1);
+				}
 			});
 
 			g.attr("transform", function(d, i) {
@@ -120,7 +134,7 @@ d :=`<html>
 		}
 	        d3.json("` + timers_url + `", function(error, data) {
 			add_timer(data, d3.select("#timerdata"), "timerdata")
-			redraw(data)
+			redraw(svg, data, 0, 0, w, 0)
                 });
 	}
 	d3.select("#reload").on("click", reload);
