@@ -53,20 +53,19 @@ func JSONHandlerGraph(w http.ResponseWriter, req *http.Request, timers_url strin
 d :=`<html>
   <head>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
-    <style type="text/css">
-        #timercanvas { width: 800px; height: 300px; border: 1px solid #484; }
-    </style>
   </head>
   <body>
     <a href="#" id="reload">reload</a>
     <div id="timerdata"></div>
-    <div id="debug"></div>
     <div id="timercanvas"></div>
 
     <script type="text/javascript">
 	var cols = ['purple', 'red', 'orange', 'yellow', 'lime', 'green', 'blue', 'navy', 'black'];
 
-	var svg = d3.select("#timercanvas").append("svg").attr("width", 800).attr("height", 300);
+	var w = 800;
+	var h = 300;
+
+	var svg = d3.select("#timercanvas").append("svg").attr("width", w).attr("height", h);
 
 	function reload() {
 		function add_timer(timer, addto, idname) {
@@ -88,29 +87,39 @@ d :=`<html>
 			}
 		}
 		function redraw(timer) {
-			var sum = 0;
-			for (var i = 0; i < timer.Children.length; i++) {
-				sum += timer.Children[i].Cnt.Avg;
-			}
-			var rects = svg.selectAll("rect").data(timer.Children).enter().append("rect");
-			var cs = 0;
+			var gdata = [ 1 ];	// Force update.
+			var g = svg.selectAll("g").data(gdata);
+
+			g.enter().append("g");
+
+			var rects = g.selectAll("rect").data(timer.Children);
+
+			rects.enter().append("rect");
+
+			var xoff = 0;
 			rects.attr("x", function(d, i) {
-				r = cs;
-				cs += d.Cnt.Avg;
+				r = xoff;
+				xoff += d.Cnt.Avg;
 				return r;
-			}).attr("y", 0).attr("height", 50).attr("width", function(d, i) {
+			})
+			.attr("y", 0).attr("height", 50)
+			.attr("width", function(d, i) {
 				return d.Cnt.Avg;
-			}).attr("fill", function(d, i) {
+			})
+			.attr("fill", function(d, i) {
 				return cols[i % cols.length];
-			}).attr("transform", "scale(" + 800.0 / sum + ", 1)").on("click", function(d, i) {
+			})
+			.on("click", function(d, i) {
 				console.log("clicked: " + d.Name);
+			});
+
+			g.attr("transform", function(d, i) {
+				return "scale(" + w / xoff + ", 1)";
 			});
 
 		}
 	        d3.json("` + timers_url + `", function(error, data) {
-			console.log("hej")
 			add_timer(data, d3.select("#timerdata"), "timerdata")
-			console.log("hej")
 			redraw(data)
                 });
 	}
