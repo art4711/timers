@@ -53,21 +53,32 @@ func JSONHandlerGraph(w http.ResponseWriter, req *http.Request, timers_url strin
 d :=`<html>
   <head>
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <style type="text/css">
+
+.chart {
+  display: block;
+  font-size: 11px;
+}
+
+rect {
+  stroke: #eee;
+  cursor: pointer;
+  fill: steelblue;
+  fill-opacity: .8;
+}
+
+text {
+  pointer-events: none;
+}
+    </style>
   </head>
   <body>
     <a href="#" id="reload">reload</a>
-    <div id="timercanvas"></div>
+    <div id="timercanvas" class="chart"></div>
     <div id="timerdata"></div>
 
-    <script type="text/javascript">
-	var col_level = [
-		d3.interpolateRgb(d3.rgb(0, 127, 0), d3.rgb(0, 255, 0)),
-		d3.interpolateRgb(d3.rgb(127, 0, 0), d3.rgb(255, 0, 0)),
-		d3.interpolateRgb(d3.rgb(0, 0, 127), d3.rgb(0, 0, 255)),
-		d3.interpolateRgb(d3.rgb(127, 127, 0), d3.rgb(255, 255, 0)),
-		d3.interpolateRgb(d3.rgb(0, 127, 127), d3.rgb(0, 255, 255))
-	]
 
+    <script type="text/javascript">
 	var w = 960;
 	var h = 500;
 
@@ -84,27 +95,51 @@ d :=`<html>
 
 	function reload() {
 		d3.json("` + timers_url + `", function(error, data) {
-			var rect = svg.selectAll("rect").data(part.nodes(data));
+			var g = svg.selectAll("g").data(part.nodes(data));
 
-			rect.enter().append("rect");
-			
-			rect.attr("x", function(d) { return x(d.x); })
-			 .attr("y", function(d) { return y(d.y); })
-			 .attr("width", function(d) { return x(d.dx); })
-			 .attr("height", function(d) { return y(d.dy); })
-			 .attr("fill", function(d) { return col_level[d.depth](d.x); })
+			g.enter().append("svg:g");
+
+			g.attr("transform", function(d) { return "translate(" + x(d.y) + "," + y(d.x) + ")"; })
 			 .on("click", click);
+			var kx = w / data.dx,
+			    ky = h / 1;
+
+			g.append("svg:rect")
+			 .attr("width", data.dy * kx)
+			 .attr("height", function(d) { return d.dx * ky; })
+			 .attr("class", function(d) { return d.children ? "parent" : "child"; });
+
+			g.append("svg:text")
+			 .attr("transform", transform)
+			 .attr("dy", ".35em")
+			 .style("opacity", function(d) { return d.dx * ky > 12 ? 1 : 0; })
+			 .text(function(d) { return d.Name; })
+
+			d3.select(window).on("click", function() { click(data); })
 
 			function click(d) {
-				x.domain([d.x, d.x + d.dx]);
-				y.domain([d.y, 1]).range([d.y ? 20 : 0, h]);
+				if (!d.children) return;
+				kx = (d.y ? w - 40 : w) / (1 - d.y);
+				ky = h / d.dx;
+				x.domain([d.y, 1]).range([d.y ? 40 : 0, w]);
+				y.domain([d.x, d.x + d.dx]);
 
-				rect.transition()
-				 .duration(750)
-				 .attr("x", function(d) { return x(d.x); })
-				 .attr("y", function(d) { return y(d.y); })
-			 	 .attr("width", function(d) { return x(d.x + d.dx) - x(d.x); })
-			 	 .attr("height", function(d) { return y(d.y + d.dy) - y(d.y); });
+				var t = g.transition()
+				 .duration(d3.event.altKey ? 7500 : 750)
+				 .attr("transform", function(d) { return "translate(" + x(d.y) + "," + y(d.x) + ")"; });
+
+				t.select("rect")
+				 .attr("width", d.dy * kx)
+				 .attr("height", function(d) { return d.dx * ky; });
+
+				t.select("text")
+				 .attr("transform", transform)
+				 .style("opacity", function(d) { return d.dx * ky > 12 ? 1 : 0; });
+
+				d3.event.stopPropagation();
+			}
+			function transform(d) {
+				return "translate(8, " + d.dx * ky / 2 + ")";
 			}
 		});
 	}
