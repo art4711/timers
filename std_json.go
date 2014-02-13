@@ -97,19 +97,19 @@ text {
 		d3.json("` + timers_url + `", function(error, data) {
 			var g = svg.selectAll("g").data(part.nodes(data));
 
-			g.enter().append("svg:g");
+			g.enter().append("g");
 
 			g.attr("transform", function(d) { return "translate(" + x(d.y) + "," + y(d.x) + ")"; })
 			 .on("click", click);
 			var kx = w / data.dx,
 			    ky = h / 1;
 
-			g.append("svg:rect")
+			g.append("rect")
 			 .attr("width", data.dy * kx)
 			 .attr("height", function(d) { return d.dx * ky; })
 			 .attr("class", function(d) { return d.children ? "parent" : "child"; });
 
-			g.append("svg:text")
+			g.append("text")
 			 .attr("transform", transform)
 			 .attr("dy", ".35em")
 			 .style("opacity", function(d) { return d.dx * ky > 12 ? 1 : 0; })
@@ -118,7 +118,6 @@ text {
 			d3.select(window).on("click", function() { click(data); })
 
 			function click(d) {
-				if (!d.children) return;
 				kx = (d.y ? w - 40 : w) / (1 - d.y);
 				ky = h / d.dx;
 				x.domain([d.y, 1]).range([d.y ? 40 : 0, w]);
